@@ -1,0 +1,16 @@
+<resources>
+    <string name="app_name">FileExplorer</string>
+
+    <string name="SubDir">SubDir</string>
+    <string name="Files">Files</string>
+    <string name="back">Back</string>
+
+    <string name="video">Video</string>
+    <string name="image">Image</string>
+
+    <string name="media_type">Media type</string>
+    <string name="location_type">Location type</string>
+
+    <string name="device_memory">Device memory</string>
+    <string name="sd_card">Sd card</string>
+</resources>
