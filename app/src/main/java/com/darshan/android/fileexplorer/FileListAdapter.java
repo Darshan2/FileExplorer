@@ -47,7 +47,6 @@ public class FileListAdapter extends RecyclerView.Adapter<FileListAdapter.ViewHo
     @Override
     public void onBindViewHolder(@NonNull final ViewHolder holder, final int position) {
         final Image image = mImageFilesList.get(position);
-        Log.d(TAG, "onBindViewHolder: " + image.getImageUri());
         holder.ivFileImage.setImageBitmap(BitmapFactory.decodeFile(image.getThumbUri()));
 
 //        int numSubDir = mFileMap.get("SubDir").size();

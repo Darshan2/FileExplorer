@@ -9,9 +9,9 @@ import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.graphics.Matrix;
 import android.net.Uri;
-import android.os.Environment;
 import android.provider.MediaStore;
 import android.support.annotation.NonNull;
+import android.support.annotation.Nullable;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
@@ -25,6 +25,7 @@ import android.widget.Toast;
 
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.ArrayList;
@@ -45,9 +46,12 @@ public class MainActivity extends AppCompatActivity implements FileListAdapter.G
 
 
     private HashMap<String, ArrayList<Image>> mImageAndThumbMap;
+    private HashMap<String, Long> mFolderAndIdMap;
     private ArrayList<Image> mGridImagesList;
     private ArrayList<String> mDirecNameList;
 
+    private HashSet<String> mLastSubDirSet;
+    private ThumbUtils mThumbUtils;
 
 
 
@@ -57,7 +61,8 @@ public class MainActivity extends AppCompatActivity implements FileListAdapter.G
     private String mDeviceInternalMemoryRootPath;
     private String mSdCardRootPath;
 
-    private String mLocation;
+
+    //MIME type of wanted files
     private String mMediaType;
 
     private ArrayList<String> mDirsInDevice;
@@ -86,7 +91,10 @@ public class MainActivity extends AppCompatActivity implements FileListAdapter.G
         Log.d(TAG, "onDirClick: " + dirName);
         mDirNameRecyclerView.setVisibility(View.GONE);
         mImageGridRecyclerView.setVisibility(View.VISIBLE);
-        getAllFilesInFolder(dirName, true);
+        if(mGridImagesList != null ) {
+            mGridImagesList.clear();
+        }
+        getAllFilesInFolder(dirName);
     }
 
 
@@ -96,6 +104,10 @@ public class MainActivity extends AppCompatActivity implements FileListAdapter.G
         setContentView(R.layout.activity_main);
 
         mImageAndThumbMap = new HashMap<>();
+        mLastSubDirSet = new HashSet<>();
+        mFolderAndIdMap = new HashMap<>();
+        mThumbUtils = new ThumbUtils();
+
 
 
         mFileMap = new HashMap<>();
@@ -120,23 +132,15 @@ public class MainActivity extends AppCompatActivity implements FileListAdapter.G
         mImageGridRecyclerView.setAdapter(mImageGridAdapter);
 
         mDirecNameList = new ArrayList<>();
-        mDirListAdapter = new DirListAdapter(this, mDirecNameList, this);
-        LinearLayoutManager linearLayoutManager = new LinearLayoutManager(this);
-        mDirNameRecyclerView.setLayoutManager(linearLayoutManager);
+        mDirListAdapter = new DirListAdapter(this, getContentResolver(), mFolderAndIdMap, this);
+        GridLayoutManager gridLayoutManager1 = new GridLayoutManager(this, 3);
+        mDirNameRecyclerView.setLayoutManager(gridLayoutManager1);
         mDirNameRecyclerView.setAdapter(mDirListAdapter);
 
     }
 
     private void toggleMedia() {
         Intent intent = getIntent();
-
-        if (intent.hasExtra(getString(R.string.location_type))) {
-            if (intent.getStringExtra(getString(R.string.location_type)).equals(getString(R.string.device_memory))) {
-                mLocation = LOCATION_INTERNAL;
-            } else {
-                mLocation = LOCATION_SDCard;
-            }
-        }
 
         if (intent.hasExtra(getString(R.string.media_type))) {
             if (intent.getStringExtra(getString(R.string.media_type)).equals(getString(R.string.image))) {
@@ -151,7 +155,6 @@ public class MainActivity extends AppCompatActivity implements FileListAdapter.G
         mMediaType = IMAGE_TYPE;
         final String[] columns = {MediaStore.Images.Media.DATA,
                 MediaStore.Images.Media._ID};
-//        final String orderBy = MediaStore.Images.Media._ID;
 
         //Get all the images(both in device/SdCard) and store them in cursor
         Cursor cursor = getContentResolver().query(
@@ -161,7 +164,7 @@ public class MainActivity extends AppCompatActivity implements FileListAdapter.G
                 null,
                 null);
 
-        getDirectoriesWithOnly(cursor);
+        getDirectoriesWithMedia(cursor);
 
     }
 
@@ -177,14 +180,13 @@ public class MainActivity extends AppCompatActivity implements FileListAdapter.G
                 null,
                 null);
 
-        getDirectoriesWithOnly(cursor);
+        getDirectoriesWithMedia(cursor);
 
     }
 
 
-    private void getDirectoriesWithOnly(Cursor cursor) {
-        Log.d(TAG, "getDirectoriesWithOnly: ");
-        HashSet<String> validDirs = new HashSet<>();
+    private void getDirectoriesWithMedia(Cursor cursor) {
+        Log.d(TAG, "getDirectoriesWithMedia: ");
 
         //Total number of images/videos
         int count = cursor.getCount();
@@ -192,87 +194,126 @@ public class MainActivity extends AppCompatActivity implements FileListAdapter.G
         for (int i = 0; i < count; i++) {
             cursor.moveToPosition(i);
 
-            String filePath = "";
-
             //TODO add further filters to include new media type files.
             if (mMediaType.equals(IMAGE_TYPE)) {
-                //Getting types of all images in device
+                //Getting image root path and id by querying MediaStore
                 int dataColumnIndex = cursor.getColumnIndex(MediaStore.Images.Media.DATA);
-                filePath = cursor.getString(dataColumnIndex);
+                String filePath = cursor.getString(dataColumnIndex);
 
                 int imageIdColumnIndex = cursor.getColumnIndex(MediaStore.Images.Media._ID);
                 long imageId = cursor.getLong(imageIdColumnIndex);
 
-                getImageThumbnailAndStore(imageId, filePath);
+                //add images parent root path, image id to map so that i can access them in Adapter
+                String subDirPath = filePath.substring(0, filePath.lastIndexOf("/"));
+                boolean addedFolder = mLastSubDirSet.add(subDirPath);
+                if(addedFolder) {
+                    mFolderAndIdMap.put(subDirPath, imageId);
+                }
 
-//                mValidImgExtensions.add(filePath.substring(filePath.lastIndexOf(".")));
+
+
+
 
             } else if (mMediaType.equals(VIDEO_TYPE)) {
                 //Geeing types of all videos in device
                 int dataColumnIndex = cursor.getColumnIndex(MediaStore.Video.VideoColumns.DATA);
-                filePath = cursor.getString(dataColumnIndex);
-//                mValidVideoExtensions.add(filePath.substring(filePath.lastIndexOf(".")));
-            }
+                String filePath = cursor.getString(dataColumnIndex);
 
-            //Getting all the folders with images/videos
-            String parentPath = filePath.substring(0, filePath.lastIndexOf("/"));
-            validDirs.add(parentPath);
+                int videoIdColumnIndex = cursor.getColumnIndex(MediaStore.Video.Media._ID);
+                long videoId = cursor.getLong(videoIdColumnIndex);
+            }
         }
 
         cursor.close();
-
-        mDirecNameList.addAll(mImageAndThumbMap.keySet());
-        for(String str : mDirecNameList) {
-            Log.d(TAG, "getDirectoriesWithOnly: " + str);
-        }
         mDirListAdapter.notifyDataSetChanged();
-        displayAllFiles();
-
-//        separateDirectoriesBasedOnStorage(validDirs);
-
     }
 
 
-    private void getImageThumbnailAndStore(long imageId, String imagePath) {
-        Log.d(TAG, "getImageThumbnailAndStore: ");
+    private void getAllFilesInFolder(String folderName) {
+//        Log.d(TAG, "getAllFilesInFolder: " + folderName);
+        final String[] columns = {MediaStore.Images.Media.DATA,
+                MediaStore.Images.Media._ID};
+
+        final String selection = MediaStore.Images.Media.BUCKET_DISPLAY_NAME + " = ?";
+        final String[] selectionArg = {folderName};
+
+        //Get all the images under the folder store them in cursor
+        Cursor cursor = getContentResolver().query(
+                MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+                columns,
+                selection,
+                selectionArg,
+                null);
+
+        if(cursor != null) {
+            int size = cursor.getCount();
+            for(int i = 0 ; i < size; i++) {
+                cursor.moveToPosition(i);
+                int dataColumnIndex = cursor.getColumnIndex(MediaStore.Images.Media.DATA);
+                String filePath = cursor.getString(dataColumnIndex);
+                Log.d(TAG, "getAllFilesInFolder: file " + filePath);
+
+                int imageIdColumnIndex = cursor.getColumnIndex(MediaStore.Images.Media._ID);
+                long imageId = cursor.getLong(imageIdColumnIndex);
+
+                //TODO do this in worker threads to reduce time
+                Image image = mThumbUtils.getThumbnail(getContentResolver(), imageId, filePath);
+                saveImage(image);
+
+//                getThumbnail(imageId, filePath);
+            }
+        }
+
+        mImageGridAdapter.notifyDataSetChanged();
+    }
+
+
+
+    /**
+     *
+     * @param sourceId id of original image/video in their corresponding table
+     * @param filePath
+     */
+    private void getThumbnail(long sourceId, String filePath) {
         String[] projection = {MediaStore.Images.Thumbnails.DATA};
         ContentResolver contentResolver = getContentResolver();
 
         Cursor cursor = MediaStore.Images.Thumbnails.queryMiniThumbnail(
                 contentResolver,
-                imageId,
+                sourceId,
                 MediaStore.Images.Thumbnails.MINI_KIND,
                 projection
         );
 
-        String imageThumbPath = "";
         if (cursor != null && cursor.moveToFirst()) {
-            imageThumbPath = cursor.getString(cursor.getColumnIndex(MediaStore.Images.Thumbnails.DATA));
-            cursor.close();
-
+            String imageThumbPath = cursor.getString(cursor.getColumnIndex(MediaStore.Images.Thumbnails.DATA));
             File file = new File(imageThumbPath);
-
+            //Check if the thumb file pointed by imageThumbPath exist in device(user may have deleted them)
             if (file.exists()) {
-                Image image = new Image(imagePath, imageThumbPath);
-                saveImage(imagePath, image);
+//                Log.d(TAG, "getThumbnail: file exists");
+                Image image = new Image(filePath, imageThumbPath);
+                saveImage(image);
             } else {
-                createAndStoreThumbNail(imagePath, imageId);
+//                Log.d(TAG, "getThumbnail: entry exist, file not " + imageThumbPath);
+                //Entry with give sourceId already exist in MediaStore db, so update that row
+                createImageThumbNail(sourceId, filePath, imageThumbPath);
             }
 
+            cursor.close();
+
         } else {
-            createAndStoreThumbNail(imagePath, imageId);
+            //Entry with give sourceId does not exist in MediaStore db, so insert that row
+            createImageThumbNail(sourceId, filePath, null);
         }
 
+        mImageGridAdapter.notifyDataSetChanged();
     }
 
 
-    //Create a bitmap for image and store it in MediaStore db
-    private void createAndStoreThumbNail(String imagePath, long imageId) {
-        Log.d(TAG, "createAndStoreThumbNail: ");
-        String[] projection = {MediaStore.Images.Thumbnails.DATA};
+    //Create a bitmap for image and store its uri in MediaStore db
+    private void createImageThumbNail(long imageId, String imagePath, @Nullable String previousThumbPath) {
         ContentResolver contentResolver = getContentResolver();
-
-        //Create a bitmap for image and store it in MediaStore db
+        //Create a bitmap for image. Do it in worker thread
         Bitmap sourceBm = MediaStore.Images.Thumbnails.getThumbnail(
                 contentResolver,
                 imageId,
@@ -280,37 +321,23 @@ public class MainActivity extends AppCompatActivity implements FileListAdapter.G
                 null
         );
 
-        Log.d(TAG, "createAndStoreThumbNail: imagePath " + imagePath);
-        Log.d(TAG, "createAndStoreThumbNail: bm " + sourceBm);
+        Log.d(TAG, "createImageThumbNail: imagePath " + imagePath);
+        Log.d(TAG, "createImageThumbNail: bm " + sourceBm);
 
-        //Store that bitmap in MediaStore
+        //Store/update that bitmap in MediaStore
         if (sourceBm != null) {
-            storeThumbnail(contentResolver, sourceBm, imageId, 50F,
+             storeThumbnail(imagePath, previousThumbPath, contentResolver, sourceBm, imageId, 50F,
                     50F, MediaStore.Images.Thumbnails.MINI_KIND);
         }
-
-        //Query MediaStore again to get the newly created thumb url for the image
-        Cursor cursor2 = MediaStore.Images.Thumbnails.queryMiniThumbnail(
-                contentResolver,
-                imageId,
-                MediaStore.Images.Thumbnails.MINI_KIND,
-                projection
-        );
-
-        if (cursor2 != null && cursor2.moveToFirst()) {
-            String imageThumbPath = cursor2.getString(cursor2.getColumnIndex(MediaStore.Images.Thumbnails.DATA));
-            Log.d(TAG, "createAndStoreThumbNail: thumbPath " + imageThumbPath);
-            cursor2.close();
-            Image image = new Image(imagePath, imageThumbPath);
-            saveImage(imagePath, image);
-        }
-
-
     }
 
 
-    //Put the thumbnail in MediaStore db
-    private void storeThumbnail(ContentResolver cr, Bitmap source, long id, float width, float height, int kind) {
+    /* Put the thumbnail in MediaStore db,
+     * if the row with image_id = image_source_id(Source Image id from Image table) already
+      * exist in media store db newThumbEntry = false */
+
+    private void storeThumbnail(String imagePath, @Nullable String previousThumbPath, ContentResolver cr,
+                                Bitmap source, long id, float width, float height, int kind) {
         // create the matrix to scale it
         Matrix matrix = new Matrix();
 
@@ -327,62 +354,97 @@ public class MainActivity extends AppCompatActivity implements FileListAdapter.G
         values.put(MediaStore.Images.Thumbnails.HEIGHT,   thumb.getHeight());
         values.put(MediaStore.Images.Thumbnails.WIDTH,    thumb.getWidth());
 
-        Uri url = cr.insert(MediaStore.Images.Thumbnails.EXTERNAL_CONTENT_URI, values);
+        File thumbFile;
+        if(previousThumbPath == null) {
+//            Log.d(TAG, "storeThumbnail: no thumb, no previous entry in db");
+            //i.e previously no row exist in thumb table with given sourceId(Image _id from Image table )
+            //Uri pointing to where the thumb is stored in device
+            Uri thumbUri = cr.insert(MediaStore.Images.Thumbnails.EXTERNAL_CONTENT_URI, values);
 
-        try {
-            OutputStream thumbOut = cr.openOutputStream(url);
+            try {
+                OutputStream thumbOut = cr.openOutputStream(thumbUri);
+                thumb.compress(Bitmap.CompressFormat.JPEG, 100, thumbOut);
+                thumbOut.close();
 
-            thumb.compress(Bitmap.CompressFormat.JPEG, 100, thumbOut);
-            thumbOut.close();
-        }
-        catch (FileNotFoundException ex) {
-            Log.e(TAG, "StoreThumbnail: ", ex);
-        }
-        catch (IOException ex) {
-            Log.e(TAG, "StoreThumbnail: ", ex );
+            } catch (FileNotFoundException ex) {
+                Log.e(TAG, "StoreThumbnail: ", ex);
+            }
+            catch (IOException ex) {
+                Log.e(TAG, "StoreThumbnail: ", ex);
+            }
+
+            //You have to re-query the MediaStore to get the thumb path.
+            getNewThumbFromDb(imagePath, id);
+
+        } else {
+            //i.e previously row exist in thumb table with given sourceId(Image _id from Image table)
+            int result = cr.update(MediaStore.Images.Thumbnails.EXTERNAL_CONTENT_URI,
+                    values,
+                    "image_id = " + id,
+                    null);
+            Log.d(TAG, "storeThumbnail: update " + result);
+
+            thumbFile = new File(previousThumbPath);
+
+            //Putting the generated bitmap into device storage, pointed by above url
+            try {
+                OutputStream thumbOut = new FileOutputStream(thumbFile);
+
+                thumb.compress(Bitmap.CompressFormat.JPEG, 100, thumbOut);
+                thumbOut.close();
+            }
+            catch (FileNotFoundException ex) {
+                Log.e(TAG, "StoreThumbnail: ", ex);
+            }
+            catch (IOException ex) {
+                Log.e(TAG, "StoreThumbnail: ", ex);
+            }
         }
     }
 
-    //Save image related info in map
-    private void saveImage(String imagePath, Image image) {
-        String lastSubDirName = new File(imagePath).getParentFile().getName();
 
-        if (mImageAndThumbMap.containsKey(lastSubDirName)) {
-            ArrayList<Image> imagesUnderFolder = mImageAndThumbMap.get(lastSubDirName);
-            imagesUnderFolder.add(image);
+    private void getNewThumbFromDb(String imagePath, long imageId) {
+        //Query MediaStore again to get the newly created thumb url for the image
+        String[] projection = {MediaStore.Images.Thumbnails.DATA};
+
+        Cursor cursor2 = MediaStore.Images.Thumbnails.queryMiniThumbnail(
+                getContentResolver(),
+                imageId,
+                MediaStore.Images.Thumbnails.MINI_KIND,
+                projection
+        );
+
+        if (cursor2 != null && cursor2.moveToFirst()) {
+            String imageThumbPath = cursor2.getString(cursor2.getColumnIndex(MediaStore.Images.Thumbnails.DATA));
+            Log.d(TAG, "createImageThumbNail: thumbPath " + imageThumbPath);
+            Image image = new Image(imagePath, imageThumbPath);
+            saveImage(image);
+            cursor2.close();
+        }
+
+    }
+
+
+    //Save image related info in map
+    private void saveImage(Image image) {
+        int size = mGridImagesList.size();
+        if(size > 0) {
+            mGridImagesList.add(size , image);
         } else {
-            ArrayList<Image> imagesUnderFolder = new ArrayList<>();
-            imagesUnderFolder.add(image);
-            mImageAndThumbMap.put(lastSubDirName, imagesUnderFolder);
+            mGridImagesList.add(image);
         }
     }
 
 
     private void displayAllFiles() {
-//        Set<String> keySet = mImageAndThumbMap.keySet();
-//        for (String str : keySet) {
-//            Log.d(TAG, "displayAllFiles: " + str);
-//            ArrayList<Image> images = mImageAndThumbMap.get(str);
-//            for (Image img : images) {
-//                Log.d(TAG, "displayAllFiles: " + img);
-//            }
-//        }
-    }
-
-
-    private void getAllFilesInFolder(String folderPath, boolean push) {
-        Log.d(TAG, "getAllFilesInFolder: " + folderPath);
-
-        ArrayList<Image> imgesList = mImageAndThumbMap.get(folderPath);
-        if(imgesList.size() > 0) {
-            mGridImagesList.addAll(imgesList);
-            for(Image image : imgesList) {
-                Log.d(TAG, "getAllFilesInFolder: " + image);
+        Set<String> keySet = mImageAndThumbMap.keySet();
+        for (String str : keySet) {
+            Log.d(TAG, "displayAllFiles: " + str);
+            ArrayList<Image> images = mImageAndThumbMap.get(str);
+            for (Image img : images) {
+                Log.d(TAG, "displayAllFiles: " + img);
             }
         }
-
-        mImageGridAdapter.notifyDataSetChanged();
-
     }
 
 
@@ -392,188 +454,7 @@ public class MainActivity extends AppCompatActivity implements FileListAdapter.G
 
 
 
-
-
-
-
-
-//-------------------------------------------------------------------------------------------------------//
-    private void separateDirectoriesBasedOnStorage(HashSet<String> directories) {
-        mDirsInDevice = new ArrayList<>();
-        mDirsInSdCard = new ArrayList<>();
-
-        mDeviceInternalMemoryRootPath = Environment.getExternalStorageDirectory().getAbsolutePath();
-        Log.d(TAG, "separateDirectoriesBasedOnStorage: devvvvvvvvv" + mDeviceInternalMemoryRootPath);
-
-        //Separate folders into Device and SdCard memory.
-        for(String str: directories) {
-            if(str.contains(mDeviceInternalMemoryRootPath)) {
-                mDirsInDevice.add(str);
-            } else {
-                mDirsInSdCard.add(str);
-            }
-        }
-
-        mSdCardRootPath = getSdCardRootPath(mDirsInSdCard);
-
-        for(String str : mDirsInDevice) {
-            Log.d(TAG, "separateDirectoriesBasedOnStorage: devDirs " + str);
-        }
-
-        for(String str : mDirsInSdCard) {
-            Log.d(TAG, "separateDirectoriesBasedOnStorage: sdFiles " +str);
-        }
-
-        //Toggle between storages here
-        if(mLocation.equals(LOCATION_INTERNAL)) {
-            loadAllFilesFromDeviceMemory();
-        } else if (mLocation.equals(LOCATION_SDCard)) {
-             loadAllFilesFromSdCard();
-        }
-
-    }
-
-
-    /**
-     * No std. method to get the root directory path of SdCard storage.
-     * This root directory vary from device to device based on the manufacturer.
-     * @param directoriesInSdCard
-     * @return SdCard Root Directory(relative not absolute)
-     */
-    private String getSdCardRootPath(ArrayList<String> directoriesInSdCard) {
-        String sdCardRootPath = "";
-
-        if(directoriesInSdCard.size() > 1) {
-            int minSplits = 90000;
-            String shortestPath = "";
-            //minimum requirement is second shortest, if string is longer than second shortest no problem
-            String secondShortestPath = "";
-            for (String str : directoriesInSdCard) {
-//                Log.d(TAG, "split lengths " + str.split("/").length);
-                if (str.split("/").length < minSplits) {
-                    minSplits = str.split("/").length;
-                    secondShortestPath = shortestPath;
-                    shortestPath = str;
-                }
-            }
-
-            String[] splitShortestPath = shortestPath.split("/");
-            String[] splitSecondShortestPath = secondShortestPath.split("/");
-
-            StringBuffer sb = new StringBuffer();
-            for(int i=0 ; i<splitShortestPath.length; i++) {
-                if(splitShortestPath[i].equals(splitSecondShortestPath[i])) {
-                    sb.append("/" + splitShortestPath[i]);
-                }
-            }
-
-            sdCardRootPath = sb.toString().substring(1);
-
-        } else if(directoriesInSdCard.size() == 1) {
-            sdCardRootPath = directoriesInSdCard.get(0);
-        }
-
-        Log.d(TAG, "getSdCardRootPath: " + sdCardRootPath);
-        return sdCardRootPath;
-    }
-
-
-    private void loadAllFilesFromDeviceMemory() {
-//        mLocation = LOCATION_INTERNAL;
-        File internalMemoryRoot = new File(mDeviceInternalMemoryRootPath);
-        getAllFilesUnder(internalMemoryRoot, false);
-    }
-
-
-    private void loadAllFilesFromSdCard() {
-//        mLocation = LOCATION_SDCard;
-        File sdCardRoot = new File(mSdCardRootPath);
-        getAllFilesUnder(sdCardRoot, false);
-    }
-
-
-    /**
-     * Lists files and SubDir under passed directory
-     * @param dirName file Name
-     * @param push if true passed directories absolute path added to parent stack
-     */
-    public void getAllFilesUnder(File dirName, boolean push) {
-        HashSet<File> subDirHashSet = new HashSet<>();
-        ArrayList<File> listFiles = new ArrayList<>();
-
-        if(push) {
-            mParentStack.push(dirName.getParentFile());
-        }
-
-        if(mFileMap.get("SubDir") != null && mFileMap.get("Files") != null) {
-            mFileMap.get(getString(R.string.SubDir)).clear();
-            mFileMap.get(getString(R.string.Files)).clear();
-        }
-
-        File[] filesList = dirName.listFiles();
-
-        if(filesList != null) {
-            for (File f : filesList) {
-                if (f.isDirectory()) {
-                    String dirPath = f.getAbsolutePath();
-                    if (mLocation.equals(LOCATION_INTERNAL)) {
-                        //get subDirs in device internal storage, which contains selected media files
-                        for (String str : mDirsInDevice) {
-                            if (str.contains(dirPath)) {
-                                subDirHashSet.add(f);
-                            }
-                        }
-                    } else if (mLocation.equals(LOCATION_SDCard)) {
-                        //get subDirs in sdCard storage, which contains selected media files
-                        for (String str : mDirsInSdCard) {
-                            if (str.contains(dirPath)) {
-                                subDirHashSet.add(f);
-                            }
-                        }
-                    }
-
-                } else {
-                    if (isFileOfCorrectMedia(f)) {
-                        listFiles.add(f);
-                    }
-                }
-            }
-        }
-
-        ArrayList<File> listSubDirs = new ArrayList<>(subDirHashSet);
-
-        mFileMap.put(getString(R.string.Files), listFiles);
-        mFileMap.put(getString(R.string.SubDir), listSubDirs);
-
-        mImageGridAdapter.notifyDataSetChanged();
-
-    }
-
-
-    /**
-     * Check if the submitted file is of selected media type
-     * @param file
-     * @return true if file is of selected media
-     */
-    private boolean isFileOfCorrectMedia(File file) {
-        String filePath = file.getAbsolutePath();
-        if(filePath.contains(".")) {
-            String extension = filePath.substring(filePath.lastIndexOf("."));
-
-            //TODO add further filters to include new media type
-            if(mMediaType.equals(IMAGE_TYPE)) {
-                if (mValidImgExtensions.contains(extension)) return true;
-            } else if (mMediaType.equals(VIDEO_TYPE)) {
-                if (mValidVideoExtensions.contains(extension)) return true;
-            }
-        }
-
-        return false;
-    }
-
-
-
-
+    //-------------------------------------------------------------------------------------------//
     private void checkPermissions() {
         Log.d(TAG, "checkPermissions: ");
         // Check for the external storage permission
@@ -618,7 +499,6 @@ public class MainActivity extends AppCompatActivity implements FileListAdapter.G
         if (mDirNameRecyclerView.getVisibility() != View.VISIBLE) {
             mDirNameRecyclerView.setVisibility(View.VISIBLE);
             mImageGridRecyclerView.setVisibility(View.GONE);
-//            getAllFilesUnder(parentDir, false);
         } else {
             super.onBackPressed();
         }
