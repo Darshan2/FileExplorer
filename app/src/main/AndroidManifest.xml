@@ -20,7 +20,13 @@
             </intent-filter>
         </activity>
 
-        <activity android:name=".MainActivity"/>
+        <activity android:name=".MainActivity"
+            android:parentActivityName=".SelectMediaActivity">
+            <meta-data
+                android:name="android.support.PARENT_ACTIVITY"
+                android:value=".SelectMediaActivity" />
+        </activity>
+
     </application>
 
 </manifest>

@@ -4,15 +4,14 @@ import android.content.Context;
 import android.graphics.BitmapFactory;
 import android.support.annotation.NonNull;
 import android.support.v7.widget.RecyclerView;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
-import android.widget.TextView;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.HashSet;
 
 /**
  * Created by Darshan B.S on 13-09-2018.
@@ -24,6 +23,8 @@ public class FileListAdapter extends RecyclerView.Adapter<FileListAdapter.ViewHo
     private Context mContext;
     private ArrayList<Image> mImageFilesList;
     private GridImageClickListener mListener;
+    private HashSet<Image> mSelectedImageSet;
+    private boolean selectEnabled = false;
 
     interface GridImageClickListener {
         void onGridImageClicked(File clickedSubDir);
@@ -33,6 +34,7 @@ public class FileListAdapter extends RecyclerView.Adapter<FileListAdapter.ViewHo
         this.mContext = mContext;
         this.mImageFilesList = mImageFilesList;
         this.mListener = mListener;
+        mSelectedImageSet = new HashSet<>();
     }
 
     @NonNull
@@ -49,56 +51,67 @@ public class FileListAdapter extends RecyclerView.Adapter<FileListAdapter.ViewHo
         final Image image = mImageFilesList.get(position);
         holder.ivFileImage.setImageBitmap(BitmapFactory.decodeFile(image.getThumbUri()));
 
-//        int numSubDir = mFileMap.get("SubDir").size();
-//
-//        if(position < numSubDir) {
-//            File currentFile = mFileMap.get(mContext.getString(R.string.SubDir)).get(position);
-//            holder.tvFileName.setText(currentFile.getName());
-//
-//        } else {
-//            File currentFile = mFileMap.get(mContext.getString(R.string.Files)).get(position - numSubDir);
-//            holder.tvFileName.setText(currentFile.getAbsolutePath());
-//        }
+        if(!selectEnabled) {
+            holder.ivSelectedLogo.setVisibility(View.GONE);
+        }
 
-//        holder.tvFileName.setOnClickListener(new View.OnClickListener() {
-//            @Override
-//            public void onClick(View v) {
-//                mListener.onGridImageClicked(new File(image.getImageUri()));
-//
-//            }
-//        });
+        holder.ivFileImage.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                selectEnabled = true;
+                if(mSelectedImageSet.contains(image)) {
+                    mSelectedImageSet.remove(image);
+                    deHighlightView(holder.ivSelectedLogo);
+                } else {
+                    mSelectedImageSet.add(image);
+                    highlightView(holder.ivSelectedLogo);
+                }
+            }
 
+        });
 
     }
 
 
     @Override
     public int getItemCount() {
-//        int size = 0;
-//        if(mFileMap != null) {
-//            if(mFileMap.get("Files") != null) {
-//                size = size + mFileMap.get("Files").size();
-//            }
-//
-//            if(mFileMap.get("SubDir") != null) {
-//                size = size + mFileMap.get("SubDir").size();
-//            }
-//            return size;
-//        }
-//        Log.d(TAG, "getItemCount: " +size);
         return mImageFilesList.size();
     }
 
     class ViewHolder extends RecyclerView.ViewHolder {
-
-         TextView tvFileName;
          ImageView ivFileImage;
+         ImageView ivSelectedLogo;
 
          ViewHolder(View itemView) {
             super(itemView);
 
-//            tvFileName = itemView.findViewById(R.id.fileName_TV);
             ivFileImage = itemView.findViewById(R.id.fileImage_IV);
+            ivSelectedLogo = itemView.findViewById(R.id.selectedIcon);
         }
+    }
+
+    private void highlightView(ImageView imageView) {
+        ((MainActivity)mContext).showSelectBar(mSelectedImageSet.size());
+
+        imageView.setVisibility(View.VISIBLE);
+    }
+
+    private void deHighlightView(ImageView imageView) {
+        if(mSelectedImageSet.size() == 0) {
+            selectEnabled = false;
+            ((MainActivity)mContext).hideSelectBar();
+        } else {
+            ((MainActivity) mContext).showSelectBar(mSelectedImageSet.size());
+        }
+        imageView.setVisibility(View.GONE);
+    }
+
+    public HashSet<Image> getSelectedItems() {
+        return mSelectedImageSet;
+    }
+
+    public void clearSelectedList() {
+        selectEnabled = false;
+        mSelectedImageSet.clear();
     }
 }

@@ -1,22 +1,27 @@
 <?xml version="1.0" encoding="utf-8"?>
-<RelativeLayout
-    xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent"
-    android:layout_height="match_parent"
+<com.darshan.android.fileexplorer.SquareRelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:padding="1dp"
+    xmlns:tool="http://schemas.android.com/tools"
     android:id="@+id/folder_RV">
 
     <ImageView
         android:layout_width="match_parent"
-        android:layout_height="80dp"
+        android:layout_height="match_parent"
         android:adjustViewBounds="true"
         android:scaleType="fitXY"
         android:id="@+id/folderThumb_IV"/>
 
     <TextView
+        android:background="@color/grey"
+        android:gravity="center"
+        android:layout_alignParentBottom="true"
         android:layout_width="match_parent"
         android:layout_height="18dp"
-        android:text="Dir name"
+        tool:text="Dir name"
         android:textColor="@color/colorAccent"
         android:textStyle="bold"
         android:id="@+id/dirName_TV"/>
 
-</RelativeLayout>
+</com.darshan.android.fileexplorer.SquareRelativeLayout>

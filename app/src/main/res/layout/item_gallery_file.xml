@@ -1,14 +1,24 @@
 <?xml version="1.0" encoding="utf-8"?>
-<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<com.darshan.android.fileexplorer.SquareRelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="wrap_content"
     android:layout_height="wrap_content"
     xmlns:tool="http://schemas.android.com/tools">
 
     <ImageView
         android:layout_width="match_parent"
-        android:layout_height="75dp"
+        android:layout_height="match_parent"
         android:id="@+id/fileImage_IV"
         android:adjustViewBounds="true"
-        android:scaleType="fitXY"/>
+        android:scaleType="centerCrop"
+        android:clickable="true"
+        android:focusable="true"/>
 
-</RelativeLayout>
+    <ImageView
+        android:layout_width="30dp"
+        android:layout_height="30dp"
+        android:id="@+id/selectedIcon"
+        android:src="@drawable/ic_action_check"
+        android:visibility="gone"
+        android:layout_centerInParent="true"/>
+
+</com.darshan.android.fileexplorer.SquareRelativeLayout>

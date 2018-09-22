@@ -13,4 +13,5 @@
 
     <string name="device_memory">Device memory</string>
     <string name="sd_card">Sd card</string>
+    <string name="select">Select</string>
 </resources>

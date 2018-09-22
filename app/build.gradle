@@ -28,4 +28,7 @@ dependencies {
 
     //RecyclerView
     compile "com.android.support:recyclerview-v7:27.1.1"
+
+    //Design library for Coordinator layout and Tool bar
+    implementation 'com.android.support:design:27.1.1'
 }

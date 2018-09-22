@@ -4,6 +4,7 @@ import android.content.ContentResolver;
 import android.content.Context;
 import android.graphics.BitmapFactory;
 import android.media.ThumbnailUtils;
+import android.os.AsyncTask;
 import android.support.annotation.NonNull;
 import android.support.v7.widget.RecyclerView;
 import android.util.Log;
@@ -17,6 +18,7 @@ import android.widget.TextView;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Map;
 
 /**
  * Created by Darshan B.S on 15-09-2018.
@@ -27,15 +29,15 @@ public class DirListAdapter extends RecyclerView.Adapter<DirListAdapter.DirecLis
     private Context mContext;
     private ContentResolver mContentResolver;
     private ThumbUtils mThumbUtils;
-    private HashMap<String, Long> mFolderMap;
-    private ArrayList<String> mDirecList;
+//    private HashMap<String, Long> mFolderMap;
+    private ArrayList<Image> mDirecList;
     private DirClickListener mDirClickListener;
 
-    public DirListAdapter(Context mContext, ContentResolver contentResolver, HashMap<String, Long> mFolderMap, DirClickListener mDirClickListener) {
+    public DirListAdapter(Context mContext, ContentResolver contentResolver, ArrayList<Image> subDirList, DirClickListener mDirClickListener) {
         this.mContext = mContext;
-        this.mFolderMap = mFolderMap;
         this.mDirClickListener = mDirClickListener;
         this.mContentResolver = contentResolver;
+        this.mDirecList = subDirList;
         mThumbUtils = new ThumbUtils();
 
     }
@@ -56,14 +58,15 @@ public class DirListAdapter extends RecyclerView.Adapter<DirListAdapter.DirecLis
 
     @Override
     public void onBindViewHolder(@NonNull DirecListViewHolder holder, final int position) {
-        String imageFilePath = mDirecList.get(position);
-        final String dirName = new File(imageFilePath).getName();
+        Image image = mDirecList.get(position);
 
-        Image image = mThumbUtils.getThumbnail(mContentResolver, mFolderMap.get(imageFilePath), imageFilePath);
+        String filePath = image.getImageUri();
 
-        if(image != null) {
-            holder.ivFolderThumb.setImageBitmap(
-                    BitmapFactory.decodeFile(image.getThumbUri()));
+        String subDirPath = filePath.substring(0, filePath.lastIndexOf("/"));
+        final String dirName = new File(subDirPath).getName();
+
+        if(image.getThumbUri() != null) {
+            holder.ivFolderThumb.setImageBitmap(BitmapFactory.decodeFile(image.getThumbUri()));
         }
 
         holder.tvDirName.setText(dirName);
@@ -77,7 +80,6 @@ public class DirListAdapter extends RecyclerView.Adapter<DirListAdapter.DirecLis
 
     @Override
     public int getItemCount() {
-        mDirecList = new ArrayList<>(mFolderMap.keySet());
         int size = mDirecList.size();
         return size;
 
@@ -97,4 +99,5 @@ public class DirListAdapter extends RecyclerView.Adapter<DirListAdapter.DirecLis
             rvFolder = itemView.findViewById(R.id.folder_RV);
         }
     }
+
 }
