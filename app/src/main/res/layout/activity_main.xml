@@ -4,67 +4,60 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:fitsSystemWindows="true"
+    android:background="#ededed"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    tools:context="com.darshan.android.fileexplorer.MainActivity">
+    tools:context="com.darshan.android.fileexplorer.GalleryActivity">
 
-    <android.support.v7.widget.Toolbar
-        android:id="@+id/gallery_toolbar"
+    <RelativeLayout
         android:layout_width="match_parent"
-        android:layout_height="?attr/actionBarSize"
-        android:background="?attr/colorPrimary"
-        android:elevation="4dp"
-        android:theme="@style/ThemeOverlay.AppCompat.ActionBar"
-        app:popupTheme="@style/ThemeOverlay.AppCompat.Light"/>
+        android:layout_height="60dp"
+        android:id="@+id/gallery_toolbar">
 
-    <!--<RelativeLayout-->
-        <!--android:background="@color/grey"-->
-        <!--android:layout_width="match_parent"-->
-        <!--android:layout_height="30dp"-->
-        <!--android:elevation="10dp"-->
-        <!--android:visibility="gone"-->
-        <!--android:id="@+id/select_RL">-->
+        <RelativeLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:id="@+id/folders_toolbar">
 
-        <!--<TextView-->
-            <!--android:textSize="18sp"-->
-            <!--android:paddingLeft="10dp"-->
-            <!--android:paddingRight="10dp"-->
-            <!--android:gravity="center"-->
-            <!--android:layout_width="wrap_content"-->
-            <!--android:layout_height="match_parent"-->
-            <!--android:id="@+id/itemCount_TV"-->
-            <!--android:text="10 items"-->
-            <!--android:textStyle="bold"-->
-            <!--android:textColor="@color/colorPrimaryDark"/>-->
+            <include layout="@layout/toolbar_folders"/>
 
-        <!--<TextView-->
-            <!--android:textSize="18sp"-->
-            <!--android:paddingLeft="10dp"-->
-            <!--android:paddingRight="10dp"-->
-            <!--android:gravity="center"-->
-            <!--android:layout_alignParentRight="true"-->
-            <!--android:layout_alignParentEnd="true"-->
-            <!--android:layout_width="wrap_content"-->
-            <!--android:layout_height="match_parent"-->
-            <!--android:text="SELECT"-->
-            <!--android:textStyle="bold"-->
-            <!--android:textColor="@color/colorPrimaryDark"-->
-            <!--android:id="@+id/select_TV" />-->
-    <!--</RelativeLayout>-->
+        </RelativeLayout>
+
+        <RelativeLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:id="@+id/itemSelect_toolbar"
+            android:visibility="gone">
+
+            <include layout="@layout/toolbar_gallery_item_select"/>
+
+        </RelativeLayout>
+
+    </RelativeLayout>
+
 
     <android.support.v7.widget.RecyclerView
-        android:layout_below="@id/gallery_toolbar"
+        android:paddingRight="6dp"
+        android:paddingLeft="6dp"
+        android:paddingTop="6dp"
+        android:paddingBottom="6dp"
+        android:clipToPadding="false"
+        android:background="#ededed"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
+        android:layout_below="@id/gallery_toolbar"
         android:id="@+id/dirName_RV">
     </android.support.v7.widget.RecyclerView>
 
     <android.support.v7.widget.RecyclerView
-        android:layout_below="@id/gallery_toolbar"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
+        android:padding="4dp"
+        android:clipToPadding="false"
+        android:layout_below="@id/gallery_toolbar"
         android:id="@+id/gridImage_RV"
         android:visibility="gone">
     </android.support.v7.widget.RecyclerView>
+
 
     <ProgressBar
         android:layout_width="80dp"

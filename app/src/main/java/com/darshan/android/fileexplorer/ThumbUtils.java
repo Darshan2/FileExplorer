@@ -41,7 +41,7 @@ import java.io.OutputStream;
         Cursor cursor = null;
 
         switch (mMediaType) {
-            case Consts.IMAGE_TYPE :
+            case GalleryConsts.IMAGE_TYPE :
                 cursor = MediaStore.Images.Thumbnails.queryMiniThumbnail(
                         contentResolver,
                         sourceId,
@@ -49,7 +49,7 @@ import java.io.OutputStream;
                         projection);
                 break;
 
-            case Consts.VIDEO_TYPE :
+            case GalleryConsts.VIDEO_TYPE :
                 final String[] columns = {MediaStore.Video.Thumbnails.DATA};
                 final String selection = MediaStore.Video.Thumbnails.VIDEO_ID + " = ?";
                 final String[] selectionArg = {String.valueOf(sourceId)};
@@ -106,7 +106,7 @@ import java.io.OutputStream;
                                       String imagePath, @Nullable String previousThumbPath) {
         Log.d(TAG, "createImageThumbNail: " + imagePath);
         Bitmap sourceBm = null;
-        if(mMediaType.equals(Consts.IMAGE_TYPE)) {
+        if(mMediaType.equals(GalleryConsts.IMAGE_TYPE)) {
             //Create a bitmap for image.
             sourceBm = MediaStore.Images.Thumbnails.getThumbnail(
                     contentResolver,
@@ -114,7 +114,7 @@ import java.io.OutputStream;
                     MediaStore.Images.Thumbnails.MINI_KIND,
                     null
             );
-        } else if (mMediaType.equals(Consts.VIDEO_TYPE)) {
+        } else if (mMediaType.equals(GalleryConsts.VIDEO_TYPE)) {
             //Create a bitmap for videos first frame.
             sourceBm = ThumbnailUtils.createVideoThumbnail(imagePath, MediaStore.Video.Thumbnails.MINI_KIND);
         }
@@ -140,10 +140,10 @@ import java.io.OutputStream;
 
         Uri mediaURi = null;
         String mediaIdColumnName = "";
-        if(mMediaType.equals(Consts.IMAGE_TYPE)) {
+        if(mMediaType.equals(GalleryConsts.IMAGE_TYPE)) {
             mediaURi = MediaStore.Images.Thumbnails.EXTERNAL_CONTENT_URI;
             mediaIdColumnName = MediaStore.Images.Thumbnails.IMAGE_ID;
-        } else if(mMediaType.equals(Consts.VIDEO_TYPE)) {
+        } else if(mMediaType.equals(GalleryConsts.VIDEO_TYPE)) {
             mediaURi = MediaStore.Video.Thumbnails.EXTERNAL_CONTENT_URI;
             mediaIdColumnName = MediaStore.Video.Thumbnails.VIDEO_ID;
         }

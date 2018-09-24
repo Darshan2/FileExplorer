@@ -17,10 +17,6 @@ public class SquareRelativeLayout extends RelativeLayout {
         super(context, attrs, defStyleAttr);
     }
 
-//    public SquareRelativeLayout(Context context, AttributeSet attrs, int defStyleAttr, int defStyleRes) {
-//        super(context, attrs, defStyleAttr, defStyleRes);
-//    }
-
     @Override
     protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
         //To make layout square pass same height and width

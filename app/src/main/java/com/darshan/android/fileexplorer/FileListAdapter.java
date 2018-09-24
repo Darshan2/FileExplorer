@@ -9,7 +9,6 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
 
-import java.io.File;
 import java.util.ArrayList;
 import java.util.HashSet;
 
@@ -22,18 +21,13 @@ public class FileListAdapter extends RecyclerView.Adapter<FileListAdapter.ViewHo
 
     private Context mContext;
     private ArrayList<Image> mImageFilesList;
-    private GridImageClickListener mListener;
     private HashSet<Image> mSelectedImageSet;
     private boolean selectEnabled = false;
 
-    interface GridImageClickListener {
-        void onGridImageClicked(File clickedSubDir);
-    }
 
-    public FileListAdapter(Context mContext, ArrayList<Image> mImageFilesList, GridImageClickListener mListener) {
+    public FileListAdapter(Context mContext, ArrayList<Image> mImageFilesList) {
         this.mContext = mContext;
         this.mImageFilesList = mImageFilesList;
-        this.mListener = mListener;
         mSelectedImageSet = new HashSet<>();
     }
 
@@ -51,8 +45,10 @@ public class FileListAdapter extends RecyclerView.Adapter<FileListAdapter.ViewHo
         final Image image = mImageFilesList.get(position);
         holder.ivFileImage.setImageBitmap(BitmapFactory.decodeFile(image.getThumbUri()));
 
-        if(!selectEnabled) {
+        if(!image.isSelected()) {
             holder.ivSelectedLogo.setVisibility(View.GONE);
+        } else {
+            holder.ivSelectedLogo.setVisibility(View.VISIBLE);
         }
 
         holder.ivFileImage.setOnClickListener(new View.OnClickListener() {
@@ -60,9 +56,11 @@ public class FileListAdapter extends RecyclerView.Adapter<FileListAdapter.ViewHo
             public void onClick(View v) {
                 selectEnabled = true;
                 if(mSelectedImageSet.contains(image)) {
+                    image.setSelected(false);
                     mSelectedImageSet.remove(image);
                     deHighlightView(holder.ivSelectedLogo);
                 } else {
+                    image.setSelected(true);
                     mSelectedImageSet.add(image);
                     highlightView(holder.ivSelectedLogo);
                 }
@@ -91,17 +89,16 @@ public class FileListAdapter extends RecyclerView.Adapter<FileListAdapter.ViewHo
     }
 
     private void highlightView(ImageView imageView) {
-        ((MainActivity)mContext).showSelectBar(mSelectedImageSet.size());
+        ((GalleryActivity)mContext).showFileSelectBar(mSelectedImageSet.size());
 
         imageView.setVisibility(View.VISIBLE);
     }
 
     private void deHighlightView(ImageView imageView) {
         if(mSelectedImageSet.size() == 0) {
-            selectEnabled = false;
-            ((MainActivity)mContext).hideSelectBar();
+            ((GalleryActivity)mContext).showFolderSelectBar();
         } else {
-            ((MainActivity) mContext).showSelectBar(mSelectedImageSet.size());
+            ((GalleryActivity) mContext).showFileSelectBar(mSelectedImageSet.size());
         }
         imageView.setVisibility(View.GONE);
     }
@@ -112,6 +109,9 @@ public class FileListAdapter extends RecyclerView.Adapter<FileListAdapter.ViewHo
 
     public void clearSelectedList() {
         selectEnabled = false;
+        for(Image image : mImageFilesList) {
+            image.setSelected(false);
+        }
         mSelectedImageSet.clear();
     }
 }

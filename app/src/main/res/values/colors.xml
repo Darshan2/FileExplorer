@@ -6,4 +6,5 @@
     <color name="grey">#c2c2a3</color>
     <color name="white">#FFFFFF</color>
     <color name="black">#000000</color>
+    <color name="lokal_color">#ffbb00</color>
 </resources>

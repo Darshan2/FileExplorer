@@ -8,21 +8,15 @@ import android.net.Uri;
 import android.os.AsyncTask;
 import android.provider.MediaStore;
 import android.support.annotation.NonNull;
-import android.support.annotation.Nullable;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
-import android.support.v7.app.ActionBar;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
-import android.support.v7.widget.DividerItemDecoration;
 import android.support.v7.widget.GridLayoutManager;
 import android.support.v7.widget.RecyclerView;
-import android.support.v7.widget.Toolbar;
 import android.util.Log;
-import android.view.Menu;
-import android.view.MenuInflater;
-import android.view.MenuItem;
 import android.view.View;
+import android.widget.ImageView;
 import android.widget.ProgressBar;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
@@ -30,26 +24,21 @@ import android.widget.Toast;
 
 import java.io.File;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Set;
 
-public class MainActivity extends AppCompatActivity implements FileListAdapter.GridImageClickListener,
-        DirListAdapter.DirClickListener {
-    private static final String TAG = "MainActivity";
+
+public class GalleryActivity extends AppCompatActivity implements DirListAdapter.DirClickListener {
+    private static final String TAG = "GalleryActivity";
     private static final int REQUEST_STORAGE_PERMISSION = 110;
 
     private final String IMAGE_TYPE = "images";
     private final String VIDEO_TYPE = "videos";
 
-    private HashMap<String, ArrayList<Image>> mImageAndThumbMap;
     private ArrayList<Image> mGridImagesList;
     private ArrayList<Image> mDirecList;
     private ArrayList<LoadThumbAsyncTask> mAsyncTaskLists;
-
     private HashSet<String> mLastSubDirSet;
     private ThumbUtils mThumbUtils;
-
     //MIME type of wanted files
     private String mMediaType;
     private boolean isFolderList;
@@ -58,24 +47,13 @@ public class MainActivity extends AppCompatActivity implements FileListAdapter.G
     //widgets
     private RecyclerView mImageGridRecyclerView;
     private RecyclerView mDirNameRecyclerView;
+    private RelativeLayout mFileSelectToolbar;
+    private RelativeLayout mFoldersToolbar;
     private ProgressBar mLoadProgressBar;
-    private Toolbar mGalleryToolbar;
-    private ActionBar mGalleryActionBar;
-
 
     private FileListAdapter mImageGridAdapter;
     private DirListAdapter mDirListAdapter;
 
-
-    private TextView mSelectTV;
-    private TextView mItemCountTV;
-    private RelativeLayout mSelectRL;
-
-
-    @Override
-    public void onGridImageClicked(File subDir) {
-
-    }
 
     @Override
     public void onDirClick(String dirName) {
@@ -92,7 +70,7 @@ public class MainActivity extends AppCompatActivity implements FileListAdapter.G
         isFolderList = false;
         //Stop AsyncTask from loading previously selected folder's files thumb images
         stopPreviousAsyncTasks();
-        getAllFilesInFolder(dirName);
+        getAllFilesInFolder(getFolderCursor(dirName));
     }
 
 
@@ -105,55 +83,26 @@ public class MainActivity extends AppCompatActivity implements FileListAdapter.G
         mImageGridRecyclerView = findViewById(R.id.gridImage_RV);
         mDirNameRecyclerView = findViewById(R.id.dirName_RV);
         mLoadProgressBar = findViewById(R.id.load_PB);
-        mGalleryToolbar = findViewById(R.id.gallery_toolbar);
+        mFoldersToolbar = findViewById(R.id.folders_toolbar);
+        mFileSelectToolbar = findViewById(R.id.itemSelect_toolbar);
 
-        //set up the tool bar, as action bar
-        setSupportActionBar(mGalleryToolbar);
-        mGalleryActionBar = getSupportActionBar();
-        mGalleryActionBar.setDisplayHomeAsUpEnabled(true);
-
-        hideSelectBar();
-
-
-
-
-
-
-//        mSelectTV = findViewById(R.id.select_TV);
-//        mItemCountTV = findViewById(R.id.itemCount_TV);
-//        mSelectRL = findViewById(R.id.select_RL);
+        showFolderSelectBar();
 
         mLoadProgressBar.setVisibility(View.VISIBLE);
 
-        mImageAndThumbMap = new HashMap<>();
         mLastSubDirSet = new HashSet<>();
         mThumbUtils = new ThumbUtils();
         mAsyncTaskLists = new ArrayList<>();
 
-
         initRecyclerLists();
         checkPermissions();
-
-//        mSelectTV.setOnClickListener(new View.OnClickListener() {
-//            @Override
-//            public void onClick(View v) {
-//                HashSet<Image> selectedImages = mImageGridAdapter.getSelectedItems();
-//                for(Image image: selectedImages) {
-//                    Log.d(TAG, "onClick: " + image);
-//                }
-//                mItemCountTV.setText(selectedImages.size() + "items");
-//                refreshGridImageList();
-//            }
-//        });
 
     }
 
 
     private void initRecyclerLists() {
-//        mLoadProgressBar.setVisibility(View.VISIBLE);
-
         mGridImagesList = new ArrayList<>();
-        mImageGridAdapter = new FileListAdapter(this, mGridImagesList, this);
+        mImageGridAdapter = new FileListAdapter(this, mGridImagesList);
         GridLayoutManager gridLayoutManager = new GridLayoutManager(this, 3);
         mImageGridRecyclerView.setLayoutManager(gridLayoutManager);
         mImageGridRecyclerView.setHasFixedSize(true);
@@ -161,7 +110,7 @@ public class MainActivity extends AppCompatActivity implements FileListAdapter.G
 
 
         mDirecList = new ArrayList<>();
-        mDirListAdapter = new DirListAdapter(this, getContentResolver(), mDirecList, this);
+        mDirListAdapter = new DirListAdapter(this, mDirecList, this);
         GridLayoutManager gridLayoutManager1 = new GridLayoutManager(this, 2);
         mDirNameRecyclerView.setLayoutManager(gridLayoutManager1);
         mDirNameRecyclerView.setAdapter(mDirListAdapter);
@@ -254,9 +203,8 @@ public class MainActivity extends AppCompatActivity implements FileListAdapter.G
     }
 
 
-    private void getAllFilesInFolder(String folderName) {
-        Log.d(TAG, "getAllFilesInFolder: ");
-//        Log.d(TAG, "getAllFilesInFolder: " + folderName);
+    public Cursor getFolderCursor(String folderName) {
+        Log.d(TAG, "getFolderCursor: " + folderName);
         final String[] columns = {MediaStore.Images.Media.DATA,
                 MediaStore.Images.Media._ID};
 
@@ -272,29 +220,36 @@ public class MainActivity extends AppCompatActivity implements FileListAdapter.G
         }
 
         //Get all the files under the folder store them in cursor
-        Cursor cursor = getContentResolver().query(
-                mediaUri,
-                columns,
-                selection,
-                selectionArg,
-                null);
+        Cursor cursor = null;
+        if (mediaUri != null) {
+            cursor = getContentResolver().query(
+                    mediaUri,
+                    columns,
+                    selection,
+                    selectionArg,
+                    null);
+        }
+        return cursor;
+    }
 
-        if (cursor != null) {
-            int size = cursor.getCount();
+
+    private void getAllFilesInFolder(Cursor folderCursor) {
+        if (folderCursor != null) {
+            int size = folderCursor.getCount();
             for (int i = 0; i < size; i++) {
-                cursor.moveToPosition(i);
-                int dataColumnIndex = cursor.getColumnIndex(MediaStore.Images.Media.DATA);
-                String filePath = cursor.getString(dataColumnIndex);
+                folderCursor.moveToPosition(i);
+                int dataColumnIndex = folderCursor.getColumnIndex(MediaStore.Images.Media.DATA);
+                String filePath = folderCursor.getString(dataColumnIndex);
 
-                int imageIdColumnIndex = cursor.getColumnIndex(MediaStore.Images.Media._ID);
-                long imageId = cursor.getLong(imageIdColumnIndex);
+                int imageIdColumnIndex = folderCursor.getColumnIndex(MediaStore.Images.Media._ID);
+                long imageId = folderCursor.getLong(imageIdColumnIndex);
 
                 Log.d(TAG, "getAllFilesInFolder: " + filePath + imageId);
                 LoadThumbAsyncTask asyncTask = new LoadThumbAsyncTask();
                 mAsyncTaskLists.add(asyncTask);
                 asyncTask.execute(filePath, String.valueOf(imageId));
             }
-            cursor.close();
+            folderCursor.close();
         }
     }
 
@@ -357,32 +312,74 @@ public class MainActivity extends AppCompatActivity implements FileListAdapter.G
     }
 
 
-    private void displayAllFiles() {
-        Set<String> keySet = mImageAndThumbMap.keySet();
-        for (String str : keySet) {
-            Log.d(TAG, "displayAllFiles: " + str);
-            ArrayList<Image> images = mImageAndThumbMap.get(str);
-            for (Image img : images) {
-                Log.d(TAG, "displayAllFiles: " + img);
+    public void showFileSelectBar(int itemCount) {
+        mFileSelectToolbar.setVisibility(View.VISIBLE);
+        mFoldersToolbar.setVisibility(View.GONE);
+
+        TextView itemCountTV = findViewById(R.id.itemCount_TV);
+        String countText = itemCount + getString(R.string.items);
+        itemCountTV.setText(countText);
+
+        ImageView backArrow = findViewById(R.id.backArrow);
+        backArrow.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                onBackPressed();
             }
-        }
+        });
+
+        TextView selectTV = findViewById(R.id.select_TV);
+
+        selectTV.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                //Send the result back to calling activity
+                HashSet<Image> selectedImages = mImageGridAdapter.getSelectedItems();
+                for (Image image : selectedImages) {
+                    Log.d(TAG, "onClick: " + image);
+                }
+                sendResultBack(selectedImages);
+                refreshGridImageList();
+            }
+        });
+
+//        mGalleryActionBar.setTitle(itemCount + " items");
+//        mGalleryActionBar.setBackgroundDrawable(new ColorDrawable(ContextCompat.getColor(this, R.color.lokal_color)));
     }
 
-    public void showSelectBar(int itemCount) {
-        mGalleryActionBar.setTitle(itemCount + " items");
-        mGalleryActionBar.show();
-    }
+    public void showFolderSelectBar() {
+        mFileSelectToolbar.setVisibility(View.GONE);
+        mFoldersToolbar.setVisibility(View.VISIBLE);
 
-    public void hideSelectBar() {
-        mGalleryActionBar.setTitle("Select items");
-//        mGalleryActionBar.hide();
+        ImageView backArrow = findViewById(R.id.backArrow_yellow);
+        backArrow.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                onBackPressed();
+            }
+        });
+
+
+//        mGalleryActionBar.setTitle("Select items");
+//        mGalleryActionBar.setBackgroundDrawable(new ColorDrawable(ContextCompat.getColor(this, R.color.white)));
+
     }
 
     private void refreshGridImageList() {
-        hideSelectBar();
+        showFolderSelectBar();
         mImageGridAdapter.clearSelectedList();
         mImageGridAdapter.notifyDataSetChanged();
     }
+
+    //Send result back to calling activity
+    private void sendResultBack(HashSet<Image> selectedImages) {
+        ArrayList<Image> selectedImageList = new ArrayList<>(selectedImages);
+        Intent resultIntent = new Intent();
+        resultIntent.putParcelableArrayListExtra(GalleryConsts.SELECT_GALLERY_ITEMS, selectedImageList);
+        setResult(RESULT_OK, resultIntent);
+        finish();
+    }
+
 
 
 
@@ -444,46 +441,4 @@ public class MainActivity extends AppCompatActivity implements FileListAdapter.G
         }
     }
 
-    @Override
-    public boolean onCreateOptionsMenu(Menu menu) {
-        MenuInflater inflater = getMenuInflater();
-        inflater.inflate(R.menu.gallery_select_menu, menu);
-        return true;
-    }
-
-
-    @Override
-    public boolean onOptionsItemSelected(MenuItem item) {
-//        int itemId = item.getItemId();
-//        if(itemId == R.id.action_select) {
-//            hideSelectBar();
-//            HashSet<Image> selectedImages = mImageGridAdapter.getSelectedItems();
-//            for (Image image : selectedImages) {
-//                Log.d(TAG, "onClick: " + image);
-//            }
-//            refreshGridImageList();
-//            return true;
-//        }
-
-//        return super.onOptionsItemSelected(item);
-
-        switch (item.getItemId()) {
-            case R.id.action_select : {
-                HashSet<Image> selectedImages = mImageGridAdapter.getSelectedItems();
-                for (Image image : selectedImages) {
-                    Log.d(TAG, "onClick: " + image);
-                }
-                refreshGridImageList();
-                return true;
-            }
-
-//            case R.id.homeAsUp : {
-//                onBackPressed();
-//                return true;
-//            }
-
-            default:return super.onOptionsItemSelected(item);
-        }
-
-    }
 }

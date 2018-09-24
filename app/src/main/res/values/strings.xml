@@ -14,4 +14,7 @@
     <string name="device_memory">Device memory</string>
     <string name="sd_card">Sd card</string>
     <string name="select">Select</string>
+    <string name="items">items</string>
+    <string name="folder_toolbar_title">మీడియాను ఎంచుకోండి</string>
+    <string name="Select">అలాగే</string>
 </resources>
