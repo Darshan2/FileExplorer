@@ -51,6 +51,12 @@ public class FileListAdapter extends RecyclerView.Adapter<FileListAdapter.ViewHo
             holder.ivSelectedLogo.setVisibility(View.VISIBLE);
         }
 
+        if(image.isVideo()) {
+            holder.ivVideoIcon.setVisibility(View.VISIBLE);
+        } else {
+            holder.ivVideoIcon.setVisibility(View.GONE);
+        }
+
         holder.ivFileImage.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -78,13 +84,14 @@ public class FileListAdapter extends RecyclerView.Adapter<FileListAdapter.ViewHo
 
     class ViewHolder extends RecyclerView.ViewHolder {
          ImageView ivFileImage;
-         ImageView ivSelectedLogo;
+         ImageView ivSelectedLogo, ivVideoIcon;
 
          ViewHolder(View itemView) {
             super(itemView);
 
             ivFileImage = itemView.findViewById(R.id.fileImage_IV);
             ivSelectedLogo = itemView.findViewById(R.id.selectedIcon);
+            ivVideoIcon = itemView.findViewById(R.id.videoIcon);
         }
     }
 

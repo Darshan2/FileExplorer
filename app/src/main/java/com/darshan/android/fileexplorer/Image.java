@@ -12,6 +12,7 @@ public class Image implements Parcelable {
     private String imageUri;
     private String thumbUri;
     private boolean selected;
+    private boolean video;
 
     public Image() {
     }
@@ -21,11 +22,11 @@ public class Image implements Parcelable {
         this.thumbUri = thumbUri;
     }
 
-
     protected Image(Parcel in) {
         imageUri = in.readString();
         thumbUri = in.readString();
         selected = in.readByte() != 0;
+        video = in.readByte() != 0;
     }
 
     @Override
@@ -33,6 +34,7 @@ public class Image implements Parcelable {
         dest.writeString(imageUri);
         dest.writeString(thumbUri);
         dest.writeByte((byte) (selected ? 1 : 0));
+        dest.writeByte((byte) (video ? 1 : 0));
     }
 
     @Override
@@ -74,6 +76,14 @@ public class Image implements Parcelable {
 
     public void setSelected(boolean selected) {
         this.selected = selected;
+    }
+
+    public boolean isVideo() {
+        return video;
+    }
+
+    public void setVideo(boolean video) {
+        this.video = video;
     }
 
     @Override

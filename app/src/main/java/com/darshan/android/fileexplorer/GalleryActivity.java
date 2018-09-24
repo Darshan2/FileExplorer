@@ -28,7 +28,7 @@ import java.util.HashSet;
 
 
 public class GalleryActivity extends AppCompatActivity implements DirListAdapter.DirClickListener {
-    private static final String TAG = "GalleryActivity";
+    private static final String TAG = GalleryActivity.class.getSimpleName();
     private static final int REQUEST_STORAGE_PERMISSION = 110;
 
     private final String IMAGE_TYPE = "images";
@@ -40,8 +40,9 @@ public class GalleryActivity extends AppCompatActivity implements DirListAdapter
     private HashSet<String> mLastSubDirSet;
     private ThumbUtils mThumbUtils;
     //MIME type of wanted files
-    private String mMediaType;
+    private String mRequiredMediaType;
     private boolean isFolderList;
+    private int mNumFiles = 0;
 
 
     //widgets
@@ -70,7 +71,7 @@ public class GalleryActivity extends AppCompatActivity implements DirListAdapter
         isFolderList = false;
         //Stop AsyncTask from loading previously selected folder's files thumb images
         stopPreviousAsyncTasks();
-        getAllFilesInFolder(getFolderCursor(dirName));
+        getMediaFiles(dirName);
     }
 
 
@@ -94,6 +95,12 @@ public class GalleryActivity extends AppCompatActivity implements DirListAdapter
         mThumbUtils = new ThumbUtils();
         mAsyncTaskLists = new ArrayList<>();
 
+        //get intent extra
+        Intent intent = getIntent();
+        if (intent.hasExtra(GalleryConsts.INTENT_MEDIA_TYPE)) {
+            mRequiredMediaType = intent.getStringExtra(GalleryConsts.INTENT_MEDIA_TYPE);
+        }
+
         initRecyclerLists();
         checkPermissions();
 
@@ -110,24 +117,62 @@ public class GalleryActivity extends AppCompatActivity implements DirListAdapter
 
 
         mDirecList = new ArrayList<>();
-        mDirListAdapter = new DirListAdapter(this, mDirecList, this);
+        mDirListAdapter = new DirListAdapter(this, mDirecList, this, mRequiredMediaType);
         GridLayoutManager gridLayoutManager1 = new GridLayoutManager(this, 2);
         mDirNameRecyclerView.setLayoutManager(gridLayoutManager1);
         mDirNameRecyclerView.setAdapter(mDirListAdapter);
 
     }
 
-    private void toggleMedia() {
-        Intent intent = getIntent();
-
-        if (intent.hasExtra(getString(R.string.media_type))) {
-            if (intent.getStringExtra(getString(R.string.media_type)).equals(getString(R.string.image))) {
-                mMediaType = IMAGE_TYPE;
-            } else {
-                mMediaType = VIDEO_TYPE;
-            }
-            getAllMediaFilesFromDb();
+    private void toggleMediaFolders() {
+        switch (mRequiredMediaType) {
+            case GalleryConsts.IMAGE_TYPE:
+                getAllMediaFolderFromDb(GalleryConsts.IMAGE_TYPE);
+                break;
+            case GalleryConsts.VIDEO_TYPE:
+                getAllMediaFolderFromDb(GalleryConsts.VIDEO_TYPE);
+                break;
+            case GalleryConsts.IMAGE_VIDEO_TYPE:
+                getAllMediaFolderFromDb(GalleryConsts.IMAGE_TYPE);
+                getAllMediaFolderFromDb(GalleryConsts.VIDEO_TYPE);
+                break;
+            default:break;
         }
+    }
+
+    private void getMediaFiles(String folderName) {
+        switch (mRequiredMediaType) {
+            case GalleryConsts.IMAGE_TYPE:
+                getOnlyImageFiles(folderName);
+                break;
+            case GalleryConsts.VIDEO_TYPE:
+                getOnlyVideoFiles(folderName);
+                break;
+            case GalleryConsts.IMAGE_VIDEO_TYPE:
+                getBothImagesVideosFiles(folderName);
+                break;
+            default:break;
+        }
+    }
+
+    private int getOnlyImageFiles(String folderName) {
+        Cursor cursor = getFolderCursor(folderName, GalleryConsts.IMAGE_TYPE);
+        int itemCount = cursor.getCount();
+        mNumFiles = itemCount;
+        getAllFilesInFolder(cursor, GalleryConsts.IMAGE_TYPE);
+        return itemCount;
+    }
+
+    private int getOnlyVideoFiles(String folderName) {
+        Cursor cursor = getFolderCursor(folderName, GalleryConsts.VIDEO_TYPE);
+        int itemCount = cursor.getCount();
+        mNumFiles = itemCount;
+        getAllFilesInFolder(cursor, GalleryConsts.VIDEO_TYPE);
+        return itemCount;
+    }
+
+    private void getBothImagesVideosFiles(String folderName) {
+        mNumFiles = getOnlyImageFiles(folderName) + getOnlyVideoFiles(folderName);
     }
 
 
@@ -139,11 +184,11 @@ public class GalleryActivity extends AppCompatActivity implements DirListAdapter
     }
 
 
-    private void getAllMediaFilesFromDb() {
+    private void getAllMediaFolderFromDb(String mediaType) {
         Uri mediaUri = null;
-        if (mMediaType.equals(IMAGE_TYPE)) {
+        if (mediaType.equals(IMAGE_TYPE)) {
             mediaUri = MediaStore.Images.Media.EXTERNAL_CONTENT_URI;
-        } else if (mMediaType.equals(VIDEO_TYPE)) {
+        } else if (mediaType.equals(VIDEO_TYPE)) {
             mediaUri = MediaStore.Video.Media.EXTERNAL_CONTENT_URI;
         }
 
@@ -159,12 +204,13 @@ public class GalleryActivity extends AppCompatActivity implements DirListAdapter
                     null,
                     null);
 
-            getDirectoriesWithMedia(cursor);
+            getDirectoriesWithMedia(cursor, mediaType);
         }
     }
 
 
-    private void getDirectoriesWithMedia(Cursor cursor) {
+    //Cursor will determine which media directories we are getting
+    private void getDirectoriesWithMedia(Cursor cursor, String mediaType) {
         Log.d(TAG, "getDirectoriesWithMedia: ");
         isFolderList = true;
 
@@ -174,7 +220,7 @@ public class GalleryActivity extends AppCompatActivity implements DirListAdapter
         for (int i = 0; i < count; i++) {
             cursor.moveToPosition(i);
             //TODO add further filters to include new media type files.
-            if (mMediaType.equals(IMAGE_TYPE) || mMediaType.equals(VIDEO_TYPE)) {
+            if (mediaType.equals(IMAGE_TYPE) || mediaType.equals(VIDEO_TYPE)) {
                 //Getting image/video root path and id by querying MediaStore
                 int dataColumnIndex = cursor.getColumnIndex(MediaStore.Images.Media.DATA);
                 String filePath = cursor.getString(dataColumnIndex);
@@ -186,12 +232,11 @@ public class GalleryActivity extends AppCompatActivity implements DirListAdapter
                 String subDirName = new File(filePath.substring(0, filePath.lastIndexOf("/"))).getName();
                 boolean addedFolder = mLastSubDirSet.add(subDirName);
                 if (addedFolder) {
-                    Log.d(TAG, "getDirectoriesWithMedia: folders " + subDirName);
                     //Avoiding adding first image of the folder if that file is of 0 size
                     if (new File(filePath).length() == 0) {
                         mLastSubDirSet.remove(subDirName);
                     } else {
-                        LoadThumbAsyncTask asyncTask = new LoadThumbAsyncTask();
+                        LoadThumbAsyncTask asyncTask = new LoadThumbAsyncTask(mediaType);
                         mAsyncTaskLists.add(asyncTask);
                         asyncTask.execute(filePath, String.valueOf(imageId));
                     }
@@ -203,7 +248,8 @@ public class GalleryActivity extends AppCompatActivity implements DirListAdapter
     }
 
 
-    public Cursor getFolderCursor(String folderName) {
+    //Called when Folder is clicked
+    public Cursor getFolderCursor(String folderName, String mediaType) {
         Log.d(TAG, "getFolderCursor: " + folderName);
         final String[] columns = {MediaStore.Images.Media.DATA,
                 MediaStore.Images.Media._ID};
@@ -213,9 +259,9 @@ public class GalleryActivity extends AppCompatActivity implements DirListAdapter
 
         //Name of several image and video data base columns are same.
         Uri mediaUri = null;
-        if (mMediaType.equals(IMAGE_TYPE)) {
+        if (mediaType.equals(IMAGE_TYPE)) {
             mediaUri = MediaStore.Images.Media.EXTERNAL_CONTENT_URI;
-        } else if (mMediaType.equals(VIDEO_TYPE)) {
+        } else if (mediaType.equals(VIDEO_TYPE)) {
             mediaUri = MediaStore.Video.Media.EXTERNAL_CONTENT_URI;
         }
 
@@ -233,7 +279,7 @@ public class GalleryActivity extends AppCompatActivity implements DirListAdapter
     }
 
 
-    private void getAllFilesInFolder(Cursor folderCursor) {
+    private void getAllFilesInFolder(Cursor folderCursor, String mediaType) {
         if (folderCursor != null) {
             int size = folderCursor.getCount();
             for (int i = 0; i < size; i++) {
@@ -244,8 +290,8 @@ public class GalleryActivity extends AppCompatActivity implements DirListAdapter
                 int imageIdColumnIndex = folderCursor.getColumnIndex(MediaStore.Images.Media._ID);
                 long imageId = folderCursor.getLong(imageIdColumnIndex);
 
-                Log.d(TAG, "getAllFilesInFolder: " + filePath + imageId);
-                LoadThumbAsyncTask asyncTask = new LoadThumbAsyncTask();
+//                Log.d(TAG, "getAllFilesInFolder: " + filePath + imageId);
+                LoadThumbAsyncTask asyncTask = new LoadThumbAsyncTask(mediaType);
                 mAsyncTaskLists.add(asyncTask);
                 asyncTask.execute(filePath, String.valueOf(imageId));
             }
@@ -255,6 +301,11 @@ public class GalleryActivity extends AppCompatActivity implements DirListAdapter
 
 
     class LoadThumbAsyncTask extends AsyncTask<String, Void, Image> {
+        String mediaType;
+
+        public LoadThumbAsyncTask(String mediaType) {
+            this.mediaType = mediaType;
+        }
 
         @Override
         protected Image doInBackground(String... strings) {
@@ -263,7 +314,14 @@ public class GalleryActivity extends AppCompatActivity implements DirListAdapter
                 String imageId = strings[1];
 
                 if (!isCancelled()) {
-                    Image image = mThumbUtils.getMediaThumbnail(mMediaType, getContentResolver(), Long.valueOf(imageId), filePath);
+                    Image image = mThumbUtils.getMediaThumbnail(mediaType, getContentResolver(), Long.valueOf(imageId), filePath);
+                    if(image != null) {
+                        if (mediaType.equals(GalleryConsts.VIDEO_TYPE)) {
+                            image.setVideo(true);
+                        } else if (mediaType.equals(GalleryConsts.IMAGE_TYPE)) {
+                            image.setVideo(false);
+                        }
+                    }
                     return image;
                 } else {
                     Log.d(TAG, "doInBackground: cancelled");
@@ -324,7 +382,7 @@ public class GalleryActivity extends AppCompatActivity implements DirListAdapter
         backArrow.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                onBackPressed();
+                refreshGridImageList();
             }
         });
 
@@ -339,7 +397,7 @@ public class GalleryActivity extends AppCompatActivity implements DirListAdapter
                     Log.d(TAG, "onClick: " + image);
                 }
                 sendResultBack(selectedImages);
-                refreshGridImageList();
+//                refreshGridImageList();
             }
         });
 
@@ -365,6 +423,10 @@ public class GalleryActivity extends AppCompatActivity implements DirListAdapter
 
     }
 
+    public int getNumFiles() {
+        return mNumFiles;
+    }
+
     private void refreshGridImageList() {
         showFolderSelectBar();
         mImageGridAdapter.clearSelectedList();
@@ -375,7 +437,7 @@ public class GalleryActivity extends AppCompatActivity implements DirListAdapter
     private void sendResultBack(HashSet<Image> selectedImages) {
         ArrayList<Image> selectedImageList = new ArrayList<>(selectedImages);
         Intent resultIntent = new Intent();
-        resultIntent.putParcelableArrayListExtra(GalleryConsts.SELECT_GALLERY_ITEMS, selectedImageList);
+        resultIntent.putParcelableArrayListExtra(GalleryConsts.INTENT_SELECT_GALLERY_ITEMS, selectedImageList);
         setResult(RESULT_OK, resultIntent);
         finish();
     }
@@ -402,7 +464,7 @@ public class GalleryActivity extends AppCompatActivity implements DirListAdapter
                     REQUEST_STORAGE_PERMISSION);
         } else {
             //Permission is granted proceed
-            toggleMedia();
+            toggleMediaFolders();
         }
     }
 
@@ -415,7 +477,7 @@ public class GalleryActivity extends AppCompatActivity implements DirListAdapter
                 if (grantResults.length > 0
                         && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                     // If you get permission, proceed
-                    toggleMedia();
+                    toggleMediaFolders();
 
                 } else {
                     // If you do not get permission, show a Toast and exit from app.

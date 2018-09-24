@@ -25,11 +25,13 @@ public class DirListAdapter extends RecyclerView.Adapter<DirListAdapter.DirecLis
     private Context mContext;
     private ArrayList<Image> mDirecList;
     private DirClickListener mDirClickListener;
+    private String mRequiredMediaType;
 
-    public DirListAdapter(Context mContext, ArrayList<Image> subDirList, DirClickListener mDirClickListener) {
+    public DirListAdapter(Context mContext, ArrayList<Image> subDirList, DirClickListener mDirClickListener, String mRequiredMediaType) {
         this.mContext = mContext;
         this.mDirClickListener = mDirClickListener;
         this.mDirecList = subDirList;
+        this.mRequiredMediaType = mRequiredMediaType;
 
     }
 
@@ -91,9 +93,43 @@ public class DirListAdapter extends RecyclerView.Adapter<DirListAdapter.DirecLis
         }
     }
 
-    private String getFolderItemCount(String foderName) {
-        Cursor cursor = ((GalleryActivity)mContext).getFolderCursor(foderName);
-        return cursor.getCount() + "";
+    private String getFolderItemCount(String folderName) {
+        String itemNum = "";
+        switch (mRequiredMediaType) {
+            case GalleryConsts.IMAGE_TYPE :
+               itemNum = getNumImages(folderName) + "";
+               break;
+
+            case GalleryConsts.VIDEO_TYPE :
+                itemNum = getNumVideos(folderName) + "";
+                break;
+
+            case GalleryConsts.IMAGE_VIDEO_TYPE :
+                int total = getNumImages(folderName) + getNumVideos(folderName);
+                itemNum = total + "";
+                break;
+
+            default:break;
+        }
+
+        return itemNum;
     }
+
+    private int getNumImages(String folderName) {
+        Cursor cursor  = ((GalleryActivity)mContext).getFolderCursor(folderName,GalleryConsts.IMAGE_TYPE);
+        if(cursor != null) {
+            return cursor.getCount();
+        }
+        return 0;
+    }
+
+    private int getNumVideos(String folderName) {
+        Cursor cursor  = ((GalleryActivity)mContext).getFolderCursor(folderName,GalleryConsts.VIDEO_TYPE);
+        if(cursor != null) {
+            return cursor.getCount();
+        }
+        return 0;
+    }
+
 
 }

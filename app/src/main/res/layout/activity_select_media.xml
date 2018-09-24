@@ -6,67 +6,45 @@
     android:layout_height="match_parent"
     tools:context="com.darshan.android.fileexplorer.SelectMediaActivity">
 
-    <RelativeLayout
+    <EditText
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:id="@+id/media_RL"
-        android:visibility="visible">
+        android:id="@+id/mediaType_ET"/>
 
-        <TextView
-            android:padding="10dp"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:textSize="15sp"
-            android:text="Images"
-            android:textStyle="bold"
-            android:id="@+id/images_TV"
-            android:textColor="@color/colorPrimaryDark"/>
-
-        <TextView
-            android:layout_below="@id/images_TV"
-            android:padding="10dp"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:textSize="15sp"
-            android:id="@+id/videos_TV"
-            android:text="Videos"
-            android:textStyle="bold"
-            android:textColor="@color/colorPrimaryDark"/>
-
-    </RelativeLayout>
-
-    <RelativeLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:id="@+id/location_RL"
-        android:visibility="gone">
-
-        <TextView
-            android:padding="10dp"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:textSize="15sp"
-            android:text="Device Memory"
-            android:textStyle="bold"
-            android:id="@+id/deviceMemory_TV"
-            android:textColor="@color/colorPrimaryDark"/>
-
-        <TextView
-            android:layout_below="@id/deviceMemory_TV"
-            android:padding="10dp"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:textSize="15sp"
-            android:id="@+id/sdCard_TV"
-            android:text="SD Card"
-            android:textStyle="bold"
-            android:textColor="@color/colorPrimaryDark"/>
-
-    </RelativeLayout>
-
-    <ImageView
+    <Button
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:id="@+id/thumbImage"
-        android:visibility="gone"/>
+        android:text="Submit"
+        android:layout_below="@id/mediaType_ET"
+        android:id="@+id/submitBtn"/>
+
+    <!--<RelativeLayout-->
+        <!--android:layout_width="match_parent"-->
+        <!--android:layout_height="wrap_content"-->
+        <!--android:id="@+id/media_RL"-->
+        <!--android:visibility="visible">-->
+
+        <!--<TextView-->
+            <!--android:padding="10dp"-->
+            <!--android:layout_width="match_parent"-->
+            <!--android:layout_height="wrap_content"-->
+            <!--android:textSize="15sp"-->
+            <!--android:text="Images"-->
+            <!--android:textStyle="bold"-->
+            <!--android:id="@+id/images_TV"-->
+            <!--android:textColor="@color/colorPrimaryDark"/>-->
+
+        <!--<TextView-->
+            <!--android:layout_below="@id/images_TV"-->
+            <!--android:padding="10dp"-->
+            <!--android:layout_width="match_parent"-->
+            <!--android:layout_height="wrap_content"-->
+            <!--android:textSize="15sp"-->
+            <!--android:id="@+id/videos_TV"-->
+            <!--android:text="Videos"-->
+            <!--android:textStyle="bold"-->
+            <!--android:textColor="@color/colorPrimaryDark"/>-->
+
+    <!--</RelativeLayout>-->
+
 </RelativeLayout>

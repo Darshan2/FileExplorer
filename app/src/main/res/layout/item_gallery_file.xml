@@ -23,4 +23,17 @@
         android:layout_alignParentRight="true"
         android:layout_alignParentEnd="true"/>
 
+    <ImageView
+        android:background="#33000000"
+        android:layout_width="15dp"
+        android:layout_height="10dp"
+        android:id="@+id/videoIcon"
+        android:src="@drawable/ic_video_icon"
+        android:visibility="visible"
+        android:layout_alignParentLeft="true"
+        android:layout_alignParentStart="true"
+        android:layout_alignParentBottom="true"
+        android:layout_marginLeft="4.5dp"
+        android:layout_marginBottom="5dp"/>
+
 </com.darshan.android.fileexplorer.SquareRelativeLayout>
