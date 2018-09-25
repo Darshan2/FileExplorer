@@ -9,6 +9,8 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
 
+import com.bumptech.glide.Glide;
+
 import java.util.ArrayList;
 import java.util.HashSet;
 
@@ -43,7 +45,14 @@ public class FileListAdapter extends RecyclerView.Adapter<FileListAdapter.ViewHo
     @Override
     public void onBindViewHolder(@NonNull final ViewHolder holder, final int position) {
         final Image image = mImageFilesList.get(position);
-        holder.ivFileImage.setImageBitmap(BitmapFactory.decodeFile(image.getThumbUri()));
+
+        if(image.getThumbUri() != null) {
+            Glide.with(mContext)
+                    .load(image.getThumbUri())
+                    .into(holder.ivFileImage);
+
+        }
+//        holder.ivFileImage.setImageBitmap(BitmapFactory.decodeFile(image.getThumbUri()));
 
         if(!image.isSelected()) {
             holder.ivSelectedLogo.setVisibility(View.GONE);

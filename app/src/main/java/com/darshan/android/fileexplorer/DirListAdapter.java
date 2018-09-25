@@ -12,6 +12,8 @@ import android.widget.ImageView;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
 
+import com.bumptech.glide.Glide;
+
 import java.io.File;
 import java.util.ArrayList;
 
@@ -58,7 +60,11 @@ public class DirListAdapter extends RecyclerView.Adapter<DirListAdapter.DirecLis
         final String dirName = new File(subDirPath).getName();
 
         if(image.getThumbUri() != null) {
-            holder.ivFolderThumb.setImageBitmap(BitmapFactory.decodeFile(image.getThumbUri()));
+            Glide.with(mContext)
+                    .load(image.getThumbUri())
+                    .into(holder.ivFolderThumb);
+
+//            holder.ivFolderThumb.setImageBitmap(BitmapFactory.decodeFile(image.getThumbUri()));
         }
 
         holder.tvDirName.setText(dirName);
